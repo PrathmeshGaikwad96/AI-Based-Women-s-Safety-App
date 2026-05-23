@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Basic</string>
+	<string>SHRI</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,15 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>basic</string>
+	<string>shri</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SHRI needs location access to track and update guardians during an SOS emergency.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SHRI needs background location access to monitor safe zones and alert guardians when SOS is active.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SHRI needs microphone access to listen for emergency voice commands (e.g. Help, Save me).</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>SHRI needs speech recognition access to identify emergency phrases to trigger SOS automatically.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

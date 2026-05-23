@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import '../main.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:basic/main.dart';
+import '../state/app_state.dart';
+import '../models/scheme_model.dart';
+import 'ai_screen.dart';
 
 class GovernmentSchemeScreen extends StatefulWidget {
   const GovernmentSchemeScreen({super.key});
@@ -9,13 +14,63 @@ class GovernmentSchemeScreen extends StatefulWidget {
 }
 
 class _GovernmentSchemeScreenState extends State<GovernmentSchemeScreen> {
-  int _chip = 0;
+  int _selectedChipIndex = 0;
+  final List<String> _chips = const [
+    'All Schemes',
+    'Safety & Protection',
+    'Financial Assistance',
+    'Education Support',
+    'Welfare & Housing',
+  ];
 
-  final _chips = const ['All Schemes', 'Safety', 'Legal Aid'];
+  Future<void> _launchUrl(String urlString) async {
+    if (urlString.isEmpty) return;
+    final Uri url = Uri.parse(urlString);
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open page: $e')),
+        );
+      }
+    }
+  }
+
+  void _askShriAI(String schemeTitle) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AiScreen(
+          initialMessage: 'Tell me more about the "$schemeTitle" scheme, including its eligibility and application process.',
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
     final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    // Filter schemes based on selected category chip
+    final filteredSchemes = appState.schemes.where((scheme) {
+      if (_selectedChipIndex == 0) return true; // All
+      final selectedCategory = _chips[_selectedChipIndex];
+      return scheme.category.toLowerCase() == selectedCategory.toLowerCase();
+    }).toList();
+
+    // Select featured scheme: Majhi Ladki Bahin Yojana or Sakhi OSC, or first in list
+    SchemeModel? featuredScheme;
+    if (appState.schemes.isNotEmpty) {
+      featuredScheme = appState.schemes.firstWhere(
+        (s) => s.title.contains('Ladki Bahin') || s.title.contains('Sakhi'),
+        orElse: () => appState.schemes.first,
+      );
+    }
 
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(
@@ -27,13 +82,13 @@ class _GovernmentSchemeScreenState extends State<GovernmentSchemeScreen> {
           bottom: false,
           child: Stack(
             children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top Bar
-                    Row(
+              Column(
+                children: [
+                  // Sticky Top Bar
+                  Container(
+                    color: AppColors.bg,
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                    child: Row(
                       children: [
                         InkWell(
                           borderRadius: BorderRadius.circular(999),
@@ -46,7 +101,7 @@ class _GovernmentSchemeScreenState extends State<GovernmentSchemeScreen> {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Expanded(
+                        const Expanded(
                           child: Center(
                             child: Text(
                               'Government Schemes',
@@ -58,132 +113,179 @@ class _GovernmentSchemeScreenState extends State<GovernmentSchemeScreen> {
                             ),
                           ),
                         ),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(999),
-                          onTap: () {},
-                          child: const SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: Icon(Icons.search_rounded,
-                                size: 22, color: AppColors.purple),
-                          ),
-                        ),
+                        const SizedBox(width: 40), // Balance the back button spacing
                       ],
                     ),
+                  ),
 
-                    const SizedBox(height: 8),
-
-                    // Chips
-                    SizedBox(
-                      height: 34,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _chips.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 10),
-                        itemBuilder: (context, i) {
-                          final selected = _chip == i;
-                          return _SchemeChip(
-                            text: _chips[i],
-                            selected: selected,
-                            onTap: () => setState(() => _chip = i),
-                          );
-                        },
-                      ),
+                  // Sticky Chips List
+                  Container(
+                    height: 38,
+                    color: AppColors.bg,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _chips.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      itemBuilder: (context, i) {
+                        final selected = _selectedChipIndex == i;
+                        return _SchemeChip(
+                          text: _chips[i],
+                          selected: selected,
+                          onTap: () => setState(() => _selectedChipIndex = i),
+                        );
+                      },
                     ),
+                  ),
 
-                    const SizedBox(height: 14),
+                  const SizedBox(height: 12),
 
-                    // Featured card
-                    const _FeaturedSchemeCard(),
-
-                    const SizedBox(height: 12),
-
-                    // List cards
-                    const _SchemeSmallCard(
-                      icon: Icons.shield_rounded,
-                      iconBg: Color(0xFFF2E9FF),
-                      iconColor: AppColors.purple,
-                      title: 'Mahila Police\nVolunteers',
-                      status: 'ACTIVE',
-                      description:
-                          'Creating a link between police and\ncommunity for a safer environment f...',
-                      footerLeft: 'AGE: 21+ YEARS',
-                      footerRight: 'Apply Now',
-                    ),
-                    const SizedBox(height: 12),
-                    const _SchemeSmallCard(
-                      icon: Icons.home_work_rounded,
-                      iconBg: Color(0xFFF2E9FF),
-                      iconColor: AppColors.purple,
-                      title: 'Working Women\nHostels',
-                      status: 'ACTIVE',
-                      description:
-                          'Safe and affordable accommodation\nfor working women in urban and rur...',
-                      footerLeft: 'STATE SPONSORED',
-                      footerRight: 'Apply Now',
-                    ),
-                    const SizedBox(height: 12),
-                    const _SchemeSmallCard(
-                      icon: Icons.balance_rounded,
-                      iconBg: Color(0xFFF2E9FF),
-                      iconColor: AppColors.purple,
-                      title: 'Nari Shakti Legal Clinic',
-                      status: null,
-                      description:
-                          'Free legal assistance and awareness\nfor property and matrimonial rights.',
-                      footerLeft: 'LEGAL AID',
-                      footerRight: 'Apply Now',
-                    ),
-
-                    SizedBox(height: bottomInset + 90),
-                  ],
-                ),
+                  // Schemes List
+                  Expanded(
+                    child: filteredSchemes.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.category_outlined, size: 48, color: AppColors.textMuted),
+                                SizedBox(height: 12),
+                                Text(
+                                  'No schemes available in this category.',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset + 88),
+                            itemCount: filteredSchemes.length + (_selectedChipIndex == 0 && featuredScheme != null ? 1 : 0),
+                            separatorBuilder: (_, __) => const SizedBox(height: 14),
+                            itemBuilder: (context, index) {
+                              // If on "All Schemes" tab, inject the featured card at the top
+                              if (_selectedChipIndex == 0 && featuredScheme != null) {
+                                if (index == 0) {
+                                  return _FeaturedSchemeCard(
+                                    scheme: featuredScheme,
+                                    onApply: () => _launchUrl(featuredScheme!.officialUrl),
+                                    onAskAI: () => _askShriAI(featuredScheme!.title),
+                                  );
+                                }
+                                // Adjust index for actual list
+                                final actualScheme = filteredSchemes[index - 1];
+                                return _buildSchemeCard(actualScheme);
+                              } else {
+                                final actualScheme = filteredSchemes[index];
+                                return _buildSchemeCard(actualScheme);
+                              }
+                            },
+                          ),
+                  ),
+                ],
               ),
 
-              // Floating purple button bottom-right (with red dot)
+              // Floating purple button bottom-right (Tapping opens SHRI AI page)
               Positioned(
                 right: 18,
                 bottom: 18 + bottomInset,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: AppColors.purple,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.purple.withOpacity(0.28),
-                            blurRadius: 24,
-                            offset: const Offset(0, 14),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.auto_awesome_rounded,
-                          color: Colors.white, size: 22),
+                child: InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const AiScreen(),
                     ),
-                    Positioned(
-                      right: 6,
-                      top: 8,
-                      child: Container(
-                        width: 10,
-                        height: 10,
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF4D77),
+                          color: AppColors.purple,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.purple.withOpacity(0.28),
+                              blurRadius: 24,
+                              offset: const Offset(0, 14),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.auto_awesome_rounded,
+                            color: Colors.white, size: 22),
+                      ),
+                      Positioned(
+                        right: 6,
+                        top: 8,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF4D77),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSchemeCard(SchemeModel scheme) {
+    IconData icon;
+    Color iconColor;
+    Color iconBg;
+
+    // Dynamically assign icons/colors based on category
+    switch (scheme.category.toLowerCase()) {
+      case 'safety & protection':
+        icon = Icons.shield_rounded;
+        iconColor = AppColors.purple;
+        iconBg = const Color(0xFFF2E9FF);
+        break;
+      case 'financial assistance':
+        icon = Icons.account_balance_wallet_rounded;
+        iconColor = Colors.green;
+        iconBg = const Color(0xFFE8F5E9);
+        break;
+      case 'education support':
+        icon = Icons.school_rounded;
+        iconColor = Colors.blue;
+        iconBg = const Color(0xFFE3F2FD);
+        break;
+      case 'maternal care':
+        icon = Icons.child_care_rounded;
+        iconColor = Colors.red;
+        iconBg = const Color(0xFFFFEBEE);
+        break;
+      case 'welfare & housing':
+      default:
+        icon = Icons.home_work_rounded;
+        iconColor = Colors.orange;
+        iconBg = const Color(0xFFFFF3E0);
+        break;
+    }
+
+    return _SchemeSmallCard(
+      icon: icon,
+      iconBg: iconBg,
+      iconColor: iconColor,
+      title: scheme.title,
+      description: scheme.description,
+      eligibility: scheme.eligibility,
+      onApply: () => _launchUrl(scheme.officialUrl),
+      onAskAI: () => _askShriAI(scheme.title),
     );
   }
 }
@@ -236,7 +338,15 @@ class _SchemeChip extends StatelessWidget {
 }
 
 class _FeaturedSchemeCard extends StatelessWidget {
-  const _FeaturedSchemeCard();
+  const _FeaturedSchemeCard({
+    required this.scheme,
+    required this.onApply,
+    required this.onAskAI,
+  });
+
+  final SchemeModel scheme;
+  final VoidCallback onApply;
+  final VoidCallback onAskAI;
 
   @override
   Widget build(BuildContext context) {
@@ -258,9 +368,9 @@ class _FeaturedSchemeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image
+            // Image Area
             SizedBox(
-              height: 170,
+              height: 160,
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -286,6 +396,9 @@ class _FeaturedSchemeCard extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.35),
                                   borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.auto_awesome, color: Colors.white, size: 36),
                                 ),
                               ),
                             ),
@@ -315,17 +428,24 @@ class _FeaturedSchemeCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Positioned(
+                  Positioned(
                     left: 14,
                     bottom: 16,
                     right: 14,
                     child: Text(
-                      'One Stop Centre (Sakhi)',
-                      style: TextStyle(
+                      scheme.title,
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w900,
                         height: 1.15,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black54,
+                            offset: Offset(0, 1),
+                            blurRadius: 4,
+                          )
+                        ],
                       ),
                     ),
                   ),
@@ -334,14 +454,12 @@ class _FeaturedSchemeCard extends StatelessWidget {
             ),
 
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Integrated support for women affected by\n'
-                    'violence, providing legal aid, medical support,\n'
-                    'and counseling under one roof.',
+                    scheme.description,
                     style: TextStyle(
                       color: AppColors.textMuted.withOpacity(0.95),
                       fontSize: 11,
@@ -358,19 +476,22 @@ class _FeaturedSchemeCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Eligibility: All Women',
+                          'Eligibility: ${scheme.eligibility}',
                           style: TextStyle(
                             color: AppColors.textMuted.withOpacity(0.95),
-                            fontSize: 10.5,
+                            fontSize: 10,
                             fontWeight: FontWeight.w800,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       SizedBox(
                         height: 34,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(999),
-                          onTap: () {},
+                          onTap: onApply,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             decoration: BoxDecoration(
@@ -404,22 +525,27 @@ class _FeaturedSchemeCard extends StatelessWidget {
                   const Divider(height: 1, thickness: 1, color: Color(0xFFE9ECF6)),
                   const SizedBox(height: 10),
 
-                  Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.auto_awesome_rounded,
-                            size: 16, color: AppColors.purple.withOpacity(0.95)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Ask SHRI AI about this scheme',
-                          style: TextStyle(
-                            color: AppColors.purple.withOpacity(0.95),
-                            fontSize: 10.8,
-                            fontWeight: FontWeight.w900,
+                  InkWell(
+                    onTap: onAskAI,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.auto_awesome_rounded,
+                              size: 15, color: AppColors.purple.withOpacity(0.95)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Ask SHRI AI about this scheme',
+                            style: TextStyle(
+                              color: AppColors.purple.withOpacity(0.95),
+                              fontSize: 10.8,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -439,9 +565,9 @@ class _SchemeSmallCard extends StatelessWidget {
     required this.iconColor,
     required this.title,
     required this.description,
-    required this.footerLeft,
-    required this.footerRight,
-    this.status,
+    required this.eligibility,
+    required this.onApply,
+    required this.onAskAI,
   });
 
   final IconData icon;
@@ -449,9 +575,9 @@ class _SchemeSmallCard extends StatelessWidget {
   final Color iconColor;
   final String title;
   final String description;
-  final String footerLeft;
-  final String footerRight;
-  final String? status;
+  final String eligibility;
+  final VoidCallback onApply;
+  final VoidCallback onAskAI;
 
   @override
   Widget build(BuildContext context) {
@@ -493,24 +619,22 @@ class _SchemeSmallCard extends StatelessWidget {
                 ),
               ),
 
-              if (status != null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF9F1),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    'ACTIVE',
-                    style: TextStyle(
-                      color: AppColors.success,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.7,
-                    ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF9F1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'ACTIVE',
+                  style: TextStyle(
+                    color: AppColors.success,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.7,
                   ),
                 ),
-              ],
+              ),
             ],
           ),
 
@@ -529,26 +653,29 @@ class _SchemeSmallCard extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           Row(
             children: [
               Expanded(
                 child: Text(
-                  footerLeft,
+                  'ELIGIBILITY: ${eligibility.toUpperCase()}',
                   style: TextStyle(
                     color: AppColors.textMuted.withOpacity(0.9),
-                    fontSize: 9.5,
+                    fontSize: 9,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 0.6,
+                    letterSpacing: 0.5,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               SizedBox(
                 height: 34,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(999),
-                  onTap: () {},
+                  onTap: onApply,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
@@ -562,10 +689,10 @@ class _SchemeSmallCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: Center(
+                    child: const Center(
                       child: Text(
-                        footerRight,
-                        style: const TextStyle(
+                        'Apply Now',
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
@@ -576,7 +703,35 @@ class _SchemeSmallCard extends StatelessWidget {
                 ),
               ),
             ],
-          )
+          ),
+          
+          const SizedBox(height: 8),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE9ECF6)),
+          const SizedBox(height: 6),
+          
+          InkWell(
+            onTap: onAskAI,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.auto_awesome_rounded,
+                      size: 14, color: AppColors.purple.withOpacity(0.85)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Ask SHRI AI about this scheme',
+                    style: TextStyle(
+                      color: AppColors.purple.withOpacity(0.85),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

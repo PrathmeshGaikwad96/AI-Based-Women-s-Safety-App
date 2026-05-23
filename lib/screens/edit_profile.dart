@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../main.dart';
+import '../state/app_state.dart';
+import '../state/auth_state.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -13,13 +16,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   static const Color _border = Color(0xFFE7EAF3);
   static const Color _muted = Color(0xFF7E8497);
 
-  final _fullName = TextEditingController(text: 'Shreya Sharma');
-  final _email = TextEditingController(text: 'shreya.s@shri.ai');
-  final _phone = TextEditingController(text: '+91 98765 43210');
-  final _dob = TextEditingController(text: '08/24/1995');
+  bool _initialized = false;
+  late final TextEditingController _fullName;
+  late final TextEditingController _email;
+  late final TextEditingController _phone;
+  late final TextEditingController _dob;
 
   bool _immediateAlerts = true;
-  bool _voiceTrigger = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      final authState = Provider.of<AuthState>(context);
+      final user = authState.currentUser;
+      _fullName = TextEditingController(text: user?.name ?? '');
+      _email = TextEditingController(text: user?.email ?? '');
+      _phone = TextEditingController(text: user?.phone ?? '');
+      _dob = TextEditingController(text: '08/24/1995');
+      _initialized = true;
+    }
+  }
 
   @override
   void dispose() {
@@ -33,6 +50,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final appState = Provider.of<AppState>(context);
+    final authState = Provider.of<AuthState>(context);
+    final user = authState.currentUser;
 
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(
@@ -149,7 +169,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       const SizedBox(height: 14),
                       const _FieldLabel(text: 'EMAIL ADDRESS'),
                       const SizedBox(height: 8),
-                      _InputField(controller: _email),
+                      _InputField(controller: _email, readOnly: true),
 
                       const SizedBox(height: 14),
                       const _FieldLabel(text: 'PHONE NUMBER'),
@@ -216,9 +236,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               icon: Icons.mic_rounded,
                               title: 'Voice Trigger',
                               subtitle: 'AI listening for keywords',
-                              value: _voiceTrigger,
-                              onChanged: (v) =>
-                                  setState(() => _voiceTrigger = v),
+                              value: appState.isVoiceSosEnabled,
+                              onChanged: (v) => appState.toggleVoiceSOS(user, v),
                               activeColor: _purple,
                             ),
                           ],
@@ -257,8 +276,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(14),
-                      onTap: () {
-                        Navigator.of(context).pop();
+                      onTap: () async {
+                        final name = _fullName.text.trim();
+                        final phone = _phone.text.trim();
+                        if (name.isEmpty || phone.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Name and phone cannot be empty')),
+                          );
+                          return;
+                        }
+
+                        try {
+                          await authState.updateProfile(
+                            name: name,
+                            phone: phone,
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Profile updated successfully')),
+                            );
+                            Navigator.of(context).pop();
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to update profile: $e')),
+                            );
+                          }
+                        }
                       },
                       child: const Center(
                         child: Text(

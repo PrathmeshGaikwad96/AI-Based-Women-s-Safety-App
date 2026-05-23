@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../main.dart';
+import '../state/app_state.dart';
+import 'incoming_call_screen.dart';
 
 class FakeCallScreen extends StatefulWidget {
   const FakeCallScreen({super.key});
@@ -19,6 +23,7 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
 
   int _identityChip = 0; // Dad/Mom/Boss/Pizza Shop
   int _schedule = 0; // Instantly / 1 min / 5 min / Custom
+  int _customDelaySeconds = 10;
   bool _scriptedAudio = true;
   bool _vibrateMode = true;
 
@@ -27,6 +32,71 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _showCustomTimerDialog() async {
+    final minCtrl = TextEditingController(text: (_customDelaySeconds ~/ 60).toString());
+    final secCtrl = TextEditingController(text: (_customDelaySeconds % 60).toString());
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Custom Delay Timer',
+          style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        content: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: minCtrl,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                decoration: const InputDecoration(
+                  labelText: 'Min',
+                  labelStyle: TextStyle(fontSize: 12),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: secCtrl,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                decoration: const InputDecoration(
+                  labelText: 'Sec',
+                  labelStyle: TextStyle(fontSize: 12),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: _purple),
+            onPressed: () {
+              final mins = int.tryParse(minCtrl.text) ?? 0;
+              final secs = int.tryParse(secCtrl.text) ?? 0;
+              setState(() {
+                _customDelaySeconds = (mins * 60) + secs;
+                _schedule = 3;
+              });
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Set Timer', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -205,10 +275,10 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
                           ),
                           _ScheduleCard(
                             title: 'Custom',
-                            subtitle: 'Set time',
+                            subtitle: _schedule == 3 ? '${_customDelaySeconds ~/ 60}m ${_customDelaySeconds % 60}s' : 'Set time',
                             selected: _schedule == 3,
                             purple: _purple,
-                            onTap: () => setState(() => _schedule = 3),
+                            onTap: _showCustomTimerDialog,
                           ),
                         ],
                       ),
@@ -283,10 +353,61 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Start Simulation (demo)')),
+                          onTap: () async {
+                            final permissionStatus = await Permission.notification.request();
+                            if (permissionStatus.isDenied) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Notification permission is required to trigger incoming call UI.'),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+
+                            final appState = Provider.of<AppState>(context, listen: false);
+                            final delays = [0, 60, 300, _customDelaySeconds]; // Instantly, 1min, 5min, custom
+                            final delaySeconds = delays[_schedule];
+                            final name = _nameCtrl.text.isEmpty ? 'Dad' : _nameCtrl.text;
+                            final phone = _phoneCtrl.text.isEmpty ? '+91 98765 43210' : _phoneCtrl.text;
+
+                            appState.fakeCallService.scheduleCall(
+                              name: name,
+                              number: phone,
+                              delay: Duration(seconds: delaySeconds),
+                              onTrigger: () {
+                                navigatorKey.currentState?.push(
+                                  MaterialPageRoute(
+                                    builder: (_) => IncomingCallScreen(
+                                      callerName: name,
+                                      callerNumber: phone,
+                                      scriptedAudio: _scriptedAudio,
+                                    ),
+                                  ),
+                                );
+                              },
                             );
+
+                            if (delaySeconds > 0) {
+                              appState.addNotification(
+                                title: "Fake Call Scheduled",
+                                body: "Call from $name in ${delaySeconds}s",
+                                type: "fake_call",
+                              );
+                            }
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(delaySeconds == 0
+                                      ? 'Fake call triggering now!'
+                                      : 'Fake call from $name scheduled in ${delaySeconds}s'),
+                                  backgroundColor: const Color(0xFF6D28D9),
+                                ),
+                              );
+                            }
                           },
                           child: const Center(
                             child: Text(

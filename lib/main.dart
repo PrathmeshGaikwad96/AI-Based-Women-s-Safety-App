@@ -1,12 +1,32 @@
-import 'package:basic/screens/splash.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'services/auth_service.dart';
+import 'services/firestore_service.dart';
+import 'services/location_service.dart';
+import 'services/speech_service.dart';
+import 'services/chat_service.dart';
+import 'services/fake_call_service.dart';
+import 'state/auth_state.dart';
+import 'state/app_state.dart';
+import 'screens/splash.dart';
+import 'firebase_options.dart';
 
-
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  if (!kIsWeb) {
+    // Initialize communication port for background tasks
+    FlutterForegroundTask.initCommunicationPort();
+  }
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -14,7 +34,48 @@ void main() async {
     statusBarBrightness: Brightness.light,
   ));
 
-  runApp(const ShriApp());
+  // Initialize Firebase core optional fallback logic
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint("Firebase init failed or missing config. Running local simulated mode: $e");
+  }
+
+  // Create core service singletons
+  final isFirebaseInitialized = Firebase.apps.isNotEmpty;
+  final authService = AuthService(
+    fbAuth: isFirebaseInitialized ? FirebaseAuth.instance : null,
+    db: isFirebaseInitialized ? FirebaseFirestore.instance : null,
+  );
+  final dbService = FirestoreService(
+    db: isFirebaseInitialized ? FirebaseFirestore.instance : null,
+  );
+  final locationService = LocationService();
+  final speechService = SpeechService();
+  final chatService = ChatService();
+  final fakeCallService = FakeCallService();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthState>(
+          create: (_) => AuthState(authService),
+        ),
+        ChangeNotifierProvider<AppState>(
+          create: (_) => AppState(
+            dbService,
+            locationService,
+            speechService,
+            chatService,
+            fakeCallService,
+          ),
+        ),
+      ],
+      child: const ShriApp(),
+    ),
+  );
 }
 
 class ShriApp extends StatelessWidget {
@@ -28,6 +89,8 @@ class ShriApp extends StatelessWidget {
     );
 
     return MaterialApp(
+      title: 'SHRI – AI safety',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: base.copyWith(
         textTheme: GoogleFonts.poppinsTextTheme(base.textTheme),

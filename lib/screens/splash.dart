@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:basic/main.dart';
 import 'package:flutter/material.dart';
-import 'onboarding.dart';
+import 'package:provider/provider.dart';
+import '../state/auth_state.dart';
+import 'auth/login.dart';
+import 'home.dart';
 
 /// ---------- Screen 1: Splash / Initializing ----------
 class SplashInitializingScreen extends StatefulWidget {
@@ -34,10 +37,19 @@ class _SplashInitializingScreenState extends State<SplashInitializingScreen>
 
     Timer(const Duration(milliseconds: 1800), () {
       if (!mounted) return;
+      final authState = Provider.of<AuthState>(context, listen: false);
+      
+      Widget nextScreen;
+      if (authState.isAuthenticated) {
+        nextScreen = const HomeScreen();
+      } else {
+        nextScreen = const LoginScreen();
+      }
+
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 350),
-          pageBuilder: (_, __, ___) => const OnboardingScreen(),
+          pageBuilder: (_, __, ___) => nextScreen,
           transitionsBuilder: (_, a, __, child) =>
               FadeTransition(opacity: a, child: child),
         ),

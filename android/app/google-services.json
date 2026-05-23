@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "283136281850",
+    "project_id": "women-safety-app-b8600",
+    "storage_bucket": "women-safety-app-b8600.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:283136281850:android:22bb4d16f6cffe4e9c0d43",
+        "android_client_info": {
+          "package_name": "com.example.hutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAd3g69wYo_jWVfqql_4yF16ev_OBKCNRs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

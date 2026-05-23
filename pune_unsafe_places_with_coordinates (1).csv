@@ -1,0 +1,25 @@
+ID,Police_Station,Specific_Location,Latitude,Longitude,Risk_Description
+PN-01,Shivajinagar,SPPU University Internal Roads,18.5513,73.8224,High isolation; thick vegetation.
+PN-02,Shivajinagar,Hanuman Hill (Access Points),18.5284,73.8315,Near-zero lighting; low night footfall.
+PN-03,Shivajinagar,Model Colony (Lakaki Lake),18.5297,73.8425,Blind spots; narrow interior lanes.
+PN-04,Shivajinagar,Old Wadarwadi Passages,18.535,73.834,High density; extreme poor lighting.
+PN-05,Shivajinagar,Shivajinagar Rlwy Underpass,18.531,73.8505,Infrastructure gap; defunct CCTV.
+PN-06,Shivajinagar,FC Road/BMCC Road,18.5215,73.8406,Deserted commercial zones after 11 PM.
+PN-07,Hadapsar,Bopdeo Ghat (Critical),18.418,73.905,Total isolation; zero mobile network.
+PN-08,Hadapsar,Sasane Nagar Rlwy Crossing,18.49,73.9319,Poor visibility; obstructed paths.
+PN-09,Hadapsar,Magarpatta South Gate,18.513,73.934,Dark peripheral service roads.
+PN-10,Kondhwa,Undri-Pisoli Road,18.455,73.901,Infrastructure lag; merged zones.
+PN-11,Kondhwa,Lullanagar Liquor Vicinity,18.487,73.882,Proximity to unauthorized alcohol dens.
+PN-12,Yerwada,Mula-Mutha Riverfront (RFD),18.544,73.888,Drug activity in thick river brush.
+PN-13,Yerwada,Laxmi Nagar,18.552,73.881,Unlit communal utility blocks.
+PN-14,Vishrantwadi,Ramwadi Metro Station,18.557,73.911,Lack of surveillance in empty zones.
+PN-15,Vishrantwadi,Mental Corner (Alandi Road),18.561,73.885,High anonymity at traffic hubs.
+PN-16,Faraskhana,Budhwar Peth (Narrow Alleys),18.517,73.858,High congestion; restricted access.
+PN-17,Samarth,Rasta Peth / Somwar Peth,18.522,73.868,Deserted and poor industrial lighting.
+PN-18,Swargate,Swargate Bus Stand Subways,18.5018,73.8636,Underground; CCTV blind spots.
+PN-19,Parvati,Janata Vasahat (Parvati Hill),18.491,73.845,Steep terrain; narrow unmonitored stairs.
+PN-20,Kothrud,ARAI Hill (Vetal Tekdi),18.5255,73.8153,Forested tracks; zero night presence.
+PN-21,Warje,Warje Flyover Underpasses,18.484,73.805,Dark shadows under bridge infrastructure.
+PN-22,Baner,Baner-Pashan Link Road,18.554,73.789,Construction barricades blocking views.
+PN-23,Hinjewadi,Phase 2 & 3 Service Roads,18.5853,73.687,Isolated office stretches; few kiosks.
+PN-24,Dighi,Dighi Ghat/Hills,18.6159,73.8808,Extreme isolation on city outskirts.

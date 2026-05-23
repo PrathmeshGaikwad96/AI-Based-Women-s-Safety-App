@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../main.dart';
+import '../state/app_state.dart';
+import '../state/auth_state.dart';
 
 class SosAlertScreen extends StatefulWidget {
   const SosAlertScreen({super.key});
@@ -32,6 +35,14 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
     super.dispose();
   }
 
+  void _cancelSosEmergency() async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    await appState.cancelSOS("0000");
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -40,66 +51,81 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       data: MediaQuery.of(context).copyWith(
         textScaler: const TextScaler.linear(1.0),
       ),
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: Stack(
-          children: [
-            // Background map
-            Positioned.fill(
-              child: Image.asset(
-                'assets/sos_map.png',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const _SosMapFallback(),
+      child: WillPopScope(
+        onWillPop: () async => false,
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            children: [
+              // Background map
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/sos_map.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const _SosMapFallback(),
+                ),
               ),
-            ),
 
-            // Dark blue overlay like screenshot
-            Positioned.fill(
-              child: Container(
-                color: const Color(0xFF0E2B57).withOpacity(0.62),
+              // Dark blue overlay like screenshot
+              Positioned.fill(
+                child: Container(
+                  color: const Color(0xFF0E2B57).withOpacity(0.62),
+                ),
               ),
-            ),
 
-            // Top pill
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: _TopStatusPill(
-                    leftText: 'SOS ACTIVE - AI MONITORING',
-                    rightText: '94%',
-                    onBack: () => Navigator.of(context).pop(),
+              // Top pill
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: _TopStatusPill(
+                      leftText: 'SOS ACTIVE - AI MONITORING',
+                      rightText: '94%',
+                      onBack: _cancelSosEmergency,
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Center modal card
-            Align(
-              alignment: Alignment.center,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 26),
-                child: _DispatchCard(
-                  seconds: _seconds,
-                  onCall: () {},
-                  onCancel: () {},
+              // Center modal card
+              Align(
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 26),
+                  child: Consumer<AppState>(
+                    builder: (context, appState, _) => _DispatchCard(
+                      seconds: _seconds,
+                      onCall: () {
+                        // Launch dial intent (simulated)
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Calling emergency services: 112'),
+                            backgroundColor: AppColors.danger,
+                          ),
+                        );
+                      },
+                      onCancel: _cancelSosEmergency,
+                    ),
+                  ),
                 ),
               ),
-            ),
 
-            // Bottom address bar
-            Positioned(
-              left: 18,
-              right: 18,
-              bottom: 14 + bottomInset,
-              child: const _BottomAddressBar(
-                label: 'CURRENT ADDRESS',
-                address: '852 Market St, San Francisco, CA',
+              // Bottom address bar
+              Positioned(
+                left: 18,
+                right: 18,
+                bottom: 14 + bottomInset,
+                child: Consumer<AppState>(
+                  builder: (context, appState, _) => _BottomAddressBar(
+                    label: 'CURRENT ADDRESS',
+                    address: appState.currentAddress,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -345,7 +371,7 @@ class _DispatchCard extends StatelessWidget {
                 ),
                 child: const Center(
                   child: Text(
-                    'CANCEL WITH PIN',
+                    'CANCEL SOS ALARM',
                     style: TextStyle(
                       color: AppColors.textDark,
                       fontSize: 12,
