@@ -11,8 +11,8 @@ class AuthService {
   static bool bypassFirebase = false;
 
   AuthService({fb_auth.FirebaseAuth? fbAuth, FirebaseFirestore? db})
-      : _fbAuth = fbAuth,
-        _db = db {
+    : _fbAuth = fbAuth,
+      _db = db {
     if (_fbAuth != null && _db != null) {
       _isFirebaseEnabled = true;
     }
@@ -91,7 +91,10 @@ class AuthService {
         verificationStatus: 'pending',
         isBlocked: false,
         activityLog: [
-          {'action': 'Account registered', 'timestamp': DateTime.now().toIso8601String()}
+          {
+            'action': 'Account registered',
+            'timestamp': DateTime.now().toIso8601String(),
+          },
         ],
       );
       await _db!.collection('users').doc(user.uid).set(user.toMap());
@@ -113,7 +116,10 @@ class AuthService {
         verificationStatus: 'pending',
         isBlocked: false,
         activityLog: [
-          {'action': 'Account registered (Simulated)', 'timestamp': DateTime.now().toIso8601String()}
+          {
+            'action': 'Account registered (Simulated)',
+            'timestamp': DateTime.now().toIso8601String(),
+          },
         ],
       );
 
@@ -161,16 +167,29 @@ class AuthService {
       if (doc.exists && doc.data() != null) {
         final user = UserModel.fromMap(doc.data()!);
         if (user.isBlocked) {
-          throw Exception("Your account has been suspended by the administrator.");
+          throw Exception(
+            "Your account has been suspended by the administrator.",
+          );
         }
         // Log login activity
         final updatedLog = List<Map<String, dynamic>>.from(user.activityLog);
-        updatedLog.add({'action': 'Logged in', 'timestamp': DateTime.now().toIso8601String()});
+        updatedLog.add({
+          'action': 'Logged in',
+          'timestamp': DateTime.now().toIso8601String(),
+        });
         final updatedUser = user.copyWith(activityLog: updatedLog);
-        await _db.collection('users').doc(user.uid).set(updatedUser.toMap(), SetOptions(merge: true));
+        await _db
+            .collection('users')
+            .doc(user.uid)
+            .set(updatedUser.toMap(), SetOptions(merge: true));
         return updatedUser;
       }
-      return UserModel(uid: cred.user!.uid, name: 'User', email: email, phone: '');
+      return UserModel(
+        uid: cred.user!.uid,
+        name: 'User',
+        email: email,
+        phone: '',
+      );
     } else {
       final prefs = await SharedPreferences.getInstance();
       final credentialsMap = jsonDecode(prefs.getString('mock_creds') ?? '{}');
@@ -184,15 +203,27 @@ class AuthService {
           if (userJson != null) {
             final user = UserModel.fromMap(jsonDecode(userJson));
             if (user.isBlocked) {
-              throw Exception("Your account has been suspended by the administrator.");
+              throw Exception(
+                "Your account has been suspended by the administrator.",
+              );
             }
-            final updatedLog = List<Map<String, dynamic>>.from(user.activityLog);
-            updatedLog.add({'action': 'Logged in (Simulated)', 'timestamp': DateTime.now().toIso8601String()});
+            final updatedLog = List<Map<String, dynamic>>.from(
+              user.activityLog,
+            );
+            updatedLog.add({
+              'action': 'Logged in (Simulated)',
+              'timestamp': DateTime.now().toIso8601String(),
+            });
             final updatedUser = user.copyWith(activityLog: updatedLog);
             await prefs.setString('user_$uid', jsonEncode(updatedUser.toMap()));
             return updatedUser;
           }
-          return UserModel(uid: uid, name: 'Maya (Mock)', email: email, phone: '9988776655');
+          return UserModel(
+            uid: uid,
+            name: 'Maya (Mock)',
+            email: email,
+            phone: '9988776655',
+          );
         }
       }
       throw Exception('Invalid email or password (simulated)');
@@ -248,7 +279,10 @@ class AuthService {
   // Update profile
   Future<void> updateUserProfile(UserModel user) async {
     if (isFirebaseEnabled) {
-      await _db!.collection('users').doc(user.uid).set(user.toMap(), SetOptions(merge: true));
+      await _db!
+          .collection('users')
+          .doc(user.uid)
+          .set(user.toMap(), SetOptions(merge: true));
     } else {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_${user.uid}', jsonEncode(user.toMap()));
