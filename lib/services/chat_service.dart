@@ -181,28 +181,113 @@ class ChatService {
     );
   }
 
+  // Helper to determine if a query matches local keywords/db records
+  bool _hasLocalMatch(
+    String userText,
+    List<Map<String, dynamic>> schemes,
+    List<Map<String, dynamic>> rights,
+  ) {
+    final text = userText.toLowerCase().trim();
+
+    // Check schemes
+    for (final s in schemes) {
+      final title = (s['title'] ?? '').toString().toLowerCase();
+      if (text.contains(title) ||
+          (title.contains('ladki bahin') && (text.contains('ladki') || text.contains('bahin'))) ||
+          (title.contains('one stop') && (text.contains('sakhi') || text.contains('one stop') || text.contains('osc')))) {
+        return true;
+      }
+    }
+
+    // Check rights
+    for (final r in rights) {
+      final title = (r['title'] ?? '').toString().toLowerCase();
+      if (text.contains(title) ||
+          (title.contains('posh') && text.contains('posh')) ||
+          (title.contains('domestic violence') && text.contains('domestic')) ||
+          (title.contains('zero fir') && text.contains('zero fir')) ||
+          (title.contains('sunset arrest') && text.contains('sunset'))) {
+        return true;
+      }
+    }
+
+    // Check other common local menu keywords
+    final keywords = [
+      'hi', 'hello', 'hey', 'greetings', 'how are you', 'who are you', 'your name',
+      'created you', 'about yourself', 'sos', 'emergency', 'help', 'danger',
+      'save me', 'police', 'fake call', 'call', 'exit', 'escape', 'live track',
+      'track', 'share location', 'map', 'right', 'law', 'legal', 'ipc', 'crpc',
+      'rights', 'laws', 'scheme', 'yojana', 'schemes', 'yojanas', 'welfare',
+      'store', 'pepper', 'spray', 'flashlight', 'gear', 'product', 'circle',
+      'guardian', 'parents', 'family', 'score', 'safety score', 'risk',
+      'unsafe', 'hotspot'
+    ];
+
+    for (final kw in keywords) {
+      if (text.contains(kw)) return true;
+    }
+
+    return false;
+  }
+
+  // Backup keyless AI responder
+  Future<ChatMessage?> _getPollinationsResponse(String userText) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://text.pollinations.ai/${Uri.encodeComponent(userText)}'),
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final reply = response.body.trim();
+        if (reply.isNotEmpty) {
+          return ChatMessage(
+            id: 'ai_pollinations_${DateTime.now().millisecondsSinceEpoch}',
+            text: reply,
+            sender: 'ai',
+            timestamp: DateTime.now(),
+            suggestionPills: _getSuggestionsForText(reply),
+          );
+        }
+      }
+    } catch (e) {
+      print("Pollinations API fallback failed: $e");
+    }
+    return null;
+  }
+
   // Core AI response generator
-  Future<ChatMessage> getAIResponse(String userText) async {
+  Future<ChatMessage> getAIResponse(
+    String userText, {
+    List<Map<String, dynamic>>? schemes,
+    List<Map<String, dynamic>>? rights,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     
     // Load preseeded data for fallback or enrichment
-    List<Map<String, dynamic>> schemes = [];
-    List<Map<String, dynamic>> rights = [];
-    try {
-      final schemesJson = prefs.getStringList('mock_schemes') ?? [];
-      schemes = schemesJson.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
-      final rightsJson = prefs.getStringList('mock_rights') ?? [];
-      rights = rightsJson.map((r) => jsonDecode(r) as Map<String, dynamic>).toList();
-    } catch (_) {}
+    List<Map<String, dynamic>> finalSchemes = schemes ?? [];
+    List<Map<String, dynamic>> finalRights = rights ?? [];
+    if (finalSchemes.isEmpty || finalRights.isEmpty) {
+      try {
+        final schemesJson = prefs.getStringList('mock_schemes') ?? [];
+        if (finalSchemes.isEmpty) {
+          finalSchemes = schemesJson.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
+        }
+        final rightsJson = prefs.getStringList('mock_rights') ?? [];
+        if (finalRights.isEmpty) {
+          finalRights = rightsJson.map((r) => jsonDecode(r) as Map<String, dynamic>).toList();
+        }
+      } catch (_) {}
+    }
 
+    // 1. If it matches a specific local feature/right/scheme, use local response directly
+    if (_hasLocalMatch(userText, finalSchemes, finalRights)) {
+      return _getLocalResponse(userText, finalSchemes, finalRights);
+    }
+
+    // 2. Otherwise (general question), try to use the Gemini API first
     String? apiKey = await getSavedApiKey();
     if (apiKey == null || apiKey.trim().isEmpty) {
       apiKey = _defaultApiKey;
-    }
-
-    if (apiKey.isEmpty) {
-      await Future.delayed(const Duration(milliseconds: 800));
-      return _getLocalResponse(userText, schemes, rights);
     }
 
     // Find any matching scheme or right for context enrichment (RAG)
@@ -211,7 +296,7 @@ class ChatService {
 
     // Check schemes
     Map<String, dynamic>? matchedScheme;
-    for (final s in schemes) {
+    for (final s in finalSchemes) {
       final title = (s['title'] ?? '').toString().toLowerCase();
       if (lowerQuery.contains(title) || 
           (title.contains('ladki bahin') && (lowerQuery.contains('ladki') || lowerQuery.contains('bahin'))) ||
@@ -223,7 +308,7 @@ class ChatService {
 
     // Check rights
     Map<String, dynamic>? matchedRight;
-    for (final r in rights) {
+    for (final r in finalRights) {
       final title = (r['title'] ?? '').toString().toLowerCase();
       if (lowerQuery.contains(title) ||
           (title.contains('posh') && lowerQuery.contains('posh')) ||
@@ -241,43 +326,51 @@ class ChatService {
       contextEnrichment = "\n[Context: Here are the official details of the law mentioned: Title: ${matchedRight['title']}, Section: ${matchedRight['lawSection']}, Description: ${matchedRight['description']}, Penalty: ${matchedRight['penalty']}, Filing Process: ${matchedRight['filingProcess']}. Use these details in your answer.]\n";
     }
 
-    try {
-      final response = await http.post(
-        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'role': 'user',
-              'parts': [
-                {
-                  'text': "System Instruction: You are SHRI, a supportive AI assistant specialized in women's safety, legal rights, and government schemes in India. Be polite, concise, and helpful. Keep responses short and direct (under 3-4 sentences maximum). Offer safety-oriented advice.$contextEnrichment\n\nUser Question: $userText"
-                }
-              ]
-            }
-          ]
-        }),
-      ).timeout(const Duration(seconds: 8));
+    if (apiKey.isNotEmpty) {
+      try {
+        final response = await http.post(
+          Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'contents': [
+              {
+                'role': 'user',
+                'parts': [
+                  {
+                    'text': "System Instruction: You are SHRI, a supportive AI assistant specialized in women's safety, legal rights, and government schemes in India. Be polite, concise, and helpful. Keep responses short and direct (under 3-4 sentences maximum). Offer safety-oriented advice.$contextEnrichment\n\nUser Question: $userText"
+                  }
+                ]
+              }
+            ]
+          }),
+        ).timeout(const Duration(seconds: 8));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final aiText = data['candidates']?[0]?['content']?[0]?['text'] ?? 
-                       data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
-        if (aiText.isNotEmpty) {
-          return ChatMessage(
-            id: 'ai_gemini_${DateTime.now().millisecondsSinceEpoch}',
-            text: aiText,
-            sender: 'ai',
-            timestamp: DateTime.now(),
-            suggestionPills: _getSuggestionsForText(aiText),
-          );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final aiText = data['candidates']?[0]?['content']?[0]?['text'] ?? 
+                         data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
+          if (aiText.isNotEmpty) {
+            return ChatMessage(
+              id: 'ai_gemini_${DateTime.now().millisecondsSinceEpoch}',
+              text: aiText,
+              sender: 'ai',
+              timestamp: DateTime.now(),
+              suggestionPills: _getSuggestionsForText(aiText),
+            );
+          }
         }
+      } catch (e) {
+        print("Gemini API call failed: $e. Trying Pollinations fallback...");
       }
-      
-      return _getLocalResponse(userText, schemes, rights);
-    } catch (e) {
-      print("Gemini API call failed: $e. Falling back to local responder.");
-      return _getLocalResponse(userText, schemes, rights);
     }
+
+    // 3. Fallback: If Gemini is disabled or fails, try the free keyless Pollinations AI API
+    final backupResponse = await _getPollinationsResponse(userText);
+    if (backupResponse != null) {
+      return backupResponse;
+    }
+
+    // 4. Offline Fallback: If even Pollinations fails, show local safety menu
+    return _getLocalResponse(userText, finalSchemes, finalRights);
   }
 }

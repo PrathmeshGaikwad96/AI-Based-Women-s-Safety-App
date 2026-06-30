@@ -137,7 +137,7 @@ class AppState extends ChangeNotifier {
   Future<void> _loadData() async {
     await _dbService.preseedDataIfNeeded();
     await _loadNotifications();
-    
+
     _unsafePlaces = await _dbService.fetchUnsafePlaces();
     _rights = await _dbService.fetchRights();
     _schemes = await _dbService.fetchSchemes();
@@ -182,7 +182,7 @@ class AppState extends ChangeNotifier {
     }
     if (_currentUserId == userId) return;
     _currentUserId = userId;
-    
+
     // Cache user ID to SharedPreferences for background service access
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -201,11 +201,16 @@ class AppState extends ChangeNotifier {
     _chatHistory = [
       ChatMessage(
         id: 'init_msg',
-        text: "I'm SHRI, your smart AI safety assistant. I'm currently tracking your surroundings in real-time. How can I help you today?",
+        text:
+            "I'm SHRI, your smart AI safety assistant. I'm currently tracking your surroundings in real-time. How can I help you today?",
         sender: 'ai',
         timestamp: DateTime.now(),
-        suggestionPills: ["Check Safety Score", "Unsafe Zones Near Me", "Simulate Fake Call"],
-      )
+        suggestionPills: [
+          "Check Safety Score",
+          "Unsafe Zones Near Me",
+          "Simulate Fake Call",
+        ],
+      ),
     ];
     notifyListeners();
   }
@@ -229,14 +234,17 @@ class AppState extends ChangeNotifier {
     _currentPosition = pos;
 
     // Set approximate first to show something immediately, then fetch real
-    if (_currentAddress == 'Fetching current address...' || 
-        _currentAddress.startsWith('Permission denied') || 
-        _currentAddress.startsWith('Shivajinagar') || 
+    if (_currentAddress == 'Fetching current address...' ||
+        _currentAddress.startsWith('Permission denied') ||
+        _currentAddress.startsWith('Shivajinagar') ||
         _currentAddress.startsWith('Near SPPU') ||
         _currentAddress.startsWith('Model Colony') ||
         _currentAddress.startsWith('FC Road') ||
         _currentAddress.startsWith('Swargate')) {
-      _currentAddress = _locationService.getApproximateAddress(pos.latitude, pos.longitude);
+      _currentAddress = _locationService.getApproximateAddress(
+        pos.latitude,
+        pos.longitude,
+      );
     }
 
     // Add coordinate to user route path
@@ -244,7 +252,7 @@ class AppState extends ChangeNotifier {
     if (_routeCoordinates.isEmpty || _routeCoordinates.last != latLng) {
       _routeCoordinates.add(latLng);
       _historicalCoordinates.add(pos);
-      
+
       // Keep route coordinates within a reasonable limit to prevent performance lag (e.g. 500 points)
       if (_routeCoordinates.length > 500) {
         _routeCoordinates.removeAt(0);
@@ -258,7 +266,7 @@ class AppState extends ChangeNotifier {
       final oldThreat = _nearbyThreat;
       _nearbyThreat = threat;
       _isEnteringThreat = true;
-      
+
       final double oldScore = _safetyScore;
       // Reduce safety score dynamically based on risk level
       if (threat.riskLevel == 'High Risk') {
@@ -269,7 +277,8 @@ class AppState extends ChangeNotifier {
       if (oldScore != _safetyScore) {
         addNotification(
           title: "Safety Score Dropped",
-          body: "Your safety score is now ${_safetyScore.round()}% due to nearby threats.",
+          body:
+              "Your safety score is now ${_safetyScore.round()}% due to nearby threats.",
           type: "info",
         );
       }
@@ -279,7 +288,8 @@ class AppState extends ChangeNotifier {
         _startThreatAlarm(threat);
         addNotification(
           title: "Risk Zone Entered",
-          body: "Entered ${threat.name} (${threat.riskLevel}). Alerting nearby systems.",
+          body:
+              "Entered ${threat.name} (${threat.riskLevel}). Alerting nearby systems.",
           type: "safe_zone",
         );
       } else if (_routeCoordinates.length % 3 == 0) {
@@ -329,12 +339,23 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     // Fetch real address asynchronously if it's moved significantly or has not been fetched yet
-    if (_lastGeocodedPosition == null || 
-        Geolocator.distanceBetween(_lastGeocodedPosition!.latitude, _lastGeocodedPosition!.longitude, pos.latitude, pos.longitude) > 15) {
+    if (_lastGeocodedPosition == null ||
+        Geolocator.distanceBetween(
+              _lastGeocodedPosition!.latitude,
+              _lastGeocodedPosition!.longitude,
+              pos.latitude,
+              pos.longitude,
+            ) >
+            15) {
       _lastGeocodedPosition = pos;
       try {
-        final address = await _locationService.getRealAddress(pos.latitude, pos.longitude);
-        if (address.isNotEmpty && _currentPosition?.latitude == pos.latitude && _currentPosition?.longitude == pos.longitude) {
+        final address = await _locationService.getRealAddress(
+          pos.latitude,
+          pos.longitude,
+        );
+        if (address.isNotEmpty &&
+            _currentPosition?.latitude == pos.latitude &&
+            _currentPosition?.longitude == pos.longitude) {
           _currentAddress = address;
           notifyListeners();
         }
@@ -367,7 +388,8 @@ class AppState extends ChangeNotifier {
       if (await FlutterForegroundTask.isRunningService) {
         await FlutterForegroundTask.updateService(
           notificationTitle: '🚨 DANGER: Entering ${threat.riskLevel}!',
-          notificationText: 'You entered ${threat.name}. Stay alert and seek safety!',
+          notificationText:
+              'You entered ${threat.name}. Stay alert and seek safety!',
         );
       }
     } catch (e) {
@@ -381,7 +403,7 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       print("Error stopping ringtone: $e");
     }
-    
+
     // Reset the foreground notification back to normal
     try {
       if (await FlutterForegroundTask.isRunningService) {
@@ -427,18 +449,20 @@ class AppState extends ChangeNotifier {
   Future<void> triggerSOS(UserModel? user, {bool isVoice = false}) async {
     _isSosActive = true;
     _sosCountdown = 0;
-    final pos = _currentPosition ?? Position(
-      longitude: 73.8567,
-      latitude: 18.5204,
-      timestamp: DateTime.now(),
-      accuracy: 100,
-      altitude: 0,
-      heading: 0,
-      speed: 0,
-      speedAccuracy: 0,
-      altitudeAccuracy: 0,
-      headingAccuracy: 0,
-    );
+    final pos =
+        _currentPosition ??
+        Position(
+          longitude: 73.8567,
+          latitude: 18.5204,
+          timestamp: DateTime.now(),
+          accuracy: 100,
+          altitude: 0,
+          heading: 0,
+          speed: 0,
+          speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
+        );
 
     final alert = AlertModel(
       id: 'alert_${DateTime.now().millisecondsSinceEpoch}',
@@ -463,10 +487,12 @@ class AppState extends ChangeNotifier {
       final Telephony telephony = Telephony.instance;
       bool? permissionsGranted = await telephony.requestPhoneAndSmsPermissions;
       if (permissionsGranted == true) {
-        final locationLink = "https://www.google.com/maps/?q=${pos.latitude},${pos.longitude}";
+        final locationLink =
+            "https://www.google.com/maps/?q=${pos.latitude},${pos.longitude}";
         final userName = user?.name ?? 'Maya';
-        final message = "EMERGENCY ALERT: $userName is in danger! Live Location: $locationLink";
-        
+        final message =
+            "EMERGENCY ALERT: $userName is in danger! Live Location: $locationLink";
+
         for (final guardian in _guardians) {
           if (guardian.phone.trim().isNotEmpty) {
             await telephony.sendSms(
@@ -484,7 +510,12 @@ class AppState extends ChangeNotifier {
     }
 
     // Sync live location to Firebase Firestore & start simulated guardian movement
-    await _dbService.saveLiveLocation(alert.userId, pos.latitude, pos.longitude, alert.batteryLevel);
+    await _dbService.saveLiveLocation(
+      alert.userId,
+      pos.latitude,
+      pos.longitude,
+      alert.batteryLevel,
+    );
     _startGuardianSimulation(pos);
 
     await addNotification(
@@ -497,7 +528,10 @@ class AppState extends ChangeNotifier {
 
   Future<void> cancelSOS(String pin) async {
     if (_activeAlert != null) {
-      await _dbService.resolveAlert(_activeAlert!.id, 'Emergency resolved by user with secure PIN verification.');
+      await _dbService.resolveAlert(
+        _activeAlert!.id,
+        'Emergency resolved by user with secure PIN verification.',
+      );
       await _dbService.deleteLiveLocation(_activeAlert!.userId);
       _activeAlert = null;
     }
@@ -515,7 +549,7 @@ class AppState extends ChangeNotifier {
   // --- Simulating Guardian live tracking movement towards user during SOS ---
   void _startGuardianSimulation(Position userPos) {
     _guardianSimTimer?.cancel();
-    
+
     // Start guardian about 600m northeast of the user
     double gLat = userPos.latitude + 0.005;
     double gLng = userPos.longitude + 0.004;
@@ -523,13 +557,18 @@ class AppState extends ChangeNotifier {
 
     _guardianSimTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (_currentPosition == null) return;
-      
+
       final double targetLat = _currentPosition!.latitude;
       final double targetLng = _currentPosition!.longitude;
-      
+
       final double dLat = targetLat - gLat;
       final double dLng = targetLng - gLng;
-      final double distance = Geolocator.distanceBetween(gLat, gLng, targetLat, targetLng);
+      final double distance = Geolocator.distanceBetween(
+        gLat,
+        gLng,
+        targetLat,
+        targetLng,
+      );
 
       if (distance < 20) {
         // Guardian arrived
@@ -568,7 +607,7 @@ class AppState extends ChangeNotifier {
   void _predictDangerZones(Position currentPos) {
     int nearbyIncidents = 0;
     _predictedDangerHotspots.clear();
-    
+
     for (final place in _unsafePlaces) {
       final distance = Geolocator.distanceBetween(
         currentPos.latitude,
@@ -586,7 +625,7 @@ class AppState extends ChangeNotifier {
 
     final currentHour = DateTime.now().hour;
     final isNight = currentHour >= 20 || currentHour <= 5;
-    
+
     double riskScore = 0.0;
     if (nearbyIncidents > 0) {
       riskScore += (nearbyIncidents * 1.8).clamp(0.0, 65.0);
@@ -594,22 +633,25 @@ class AppState extends ChangeNotifier {
     if (isNight) {
       riskScore += 25.0;
     }
-    
+
     _aiRiskPredictionScore = riskScore.clamp(0.0, 100.0);
-    
+
     if (_aiRiskPredictionScore > 75) {
-      _aiPredictionSummary = "High danger prediction: Isolated night corridor with $nearbyIncidents local incidents. Alert active.";
+      _aiPredictionSummary =
+          "High danger prediction: Isolated night corridor with $nearbyIncidents local incidents. Alert active.";
     } else if (_aiRiskPredictionScore > 40) {
-      _aiPredictionSummary = "Moderate risk forecast: Nearby dark zones ($nearbyIncidents incidents). Keep on main roads.";
+      _aiPredictionSummary =
+          "Moderate risk forecast: Nearby dark zones ($nearbyIncidents incidents). Keep on main roads.";
     } else {
-      _aiPredictionSummary = "Low risk forecast: Safe route clusters detected. No anomalies on current path.";
+      _aiPredictionSummary =
+          "Low risk forecast: Safe route clusters detected. No anomalies on current path.";
     }
   }
 
   // --- SPEECH SOS METHODS ---
   Future<void> toggleVoiceSOS(UserModel? user, bool enable) async {
     _isVoiceSosEnabled = enable;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_voice_sos_enabled', enable);
@@ -626,16 +668,16 @@ class AppState extends ChangeNotifier {
       } catch (e) {
         print("Error requesting SMS/Phone permissions: $e");
       }
-      
+
       if (micStatus.isGranted) {
         // Request ignore battery optimization to ensure persistent background tracking
         await Permission.ignoreBatteryOptimizations.request();
-        
+
         try {
           if (await FlutterForegroundTask.isRunningService) {
             await FlutterForegroundTask.stopService();
           }
-          
+
           await FlutterForegroundTask.startService(
             serviceId: 100,
             notificationTitle: 'SHRI Sentinel Active',
@@ -652,7 +694,9 @@ class AppState extends ChangeNotifier {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('is_voice_sos_enabled', false);
         } catch (_) {}
-        print("Microphone permission denied; cannot start background voice monitoring.");
+        print(
+          "Microphone permission denied; cannot start background voice monitoring.",
+        );
       }
     } else {
       try {
@@ -681,7 +725,11 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     // AI thinking response
-    final response = await _chatService.getAIResponse(text);
+    final response = await _chatService.getAIResponse(
+      text,
+      schemes: _schemes.map((s) => s.toMap()).toList(),
+      rights: _rights.map((r) => r.toMap()).toList(),
+    );
     _chatHistory.add(response);
     notifyListeners();
   }
@@ -697,7 +745,11 @@ class AppState extends ChangeNotifier {
   }
 
   // --- GUARDIAN CIRCLE MANAGE ---
-  Future<void> addNewGuardian(String name, String phone, String relation) async {
+  Future<void> addNewGuardian(
+    String name,
+    String phone,
+    String relation,
+  ) async {
     final userId = _currentUserId ?? 'demo_user';
     final g = GuardianModel(
       id: 'g_${DateTime.now().millisecondsSinceEpoch}',
@@ -716,7 +768,14 @@ class AppState extends ChangeNotifier {
   }
 
   // --- ADMIN ZONE MANAGEMENT ---
-  Future<void> adminAddUnsafePlace(String name, double lat, double lng, double radius, String riskLevel, String desc) async {
+  Future<void> adminAddUnsafePlace(
+    String name,
+    double lat,
+    double lng,
+    double radius,
+    String riskLevel,
+    String desc,
+  ) async {
     final zone = UnsafePlace(
       id: 'u_${DateTime.now().millisecondsSinceEpoch}',
       name: name,
@@ -736,7 +795,8 @@ class AppState extends ChangeNotifier {
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'shri_voice_sos',
         channelName: 'SHRI Sentinel - Voice Trigger',
-        channelDescription: 'Monitors microphone for safety keywords in the background.',
+        channelDescription:
+            'Monitors microphone for safety keywords in the background.',
         channelImportance: NotificationChannelImportance.HIGH,
         priority: NotificationPriority.HIGH,
         playSound: true,
@@ -765,7 +825,9 @@ class AppState extends ChangeNotifier {
           final uid = data['userId'] ?? _currentUserId ?? 'demo_user';
           final dummyUser = UserModel(
             uid: uid,
-            name: _currentUserId == uid && _guardians.isNotEmpty ? _guardians.first.name : 'Maya',
+            name: _currentUserId == uid && _guardians.isNotEmpty
+                ? _guardians.first.name
+                : 'Maya',
             email: '',
             phone: '',
           );
@@ -780,7 +842,9 @@ class AppState extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final list = prefs.getStringList('local_safety_notifications') ?? [];
-      _localNotifications = list.map((item) => jsonDecode(item) as Map<String, dynamic>).toList();
+      _localNotifications = list
+          .map((item) => jsonDecode(item) as Map<String, dynamic>)
+          .toList();
       notifyListeners();
     } catch (e) {
       print("Error loading local notifications: $e");
