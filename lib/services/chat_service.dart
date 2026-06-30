@@ -5,6 +5,7 @@ import '../models/chat_message.dart';
 
 class ChatService {
   static const String _apiKeyPrefsKey = 'gemini_api_key_custom';
+  static const String _defaultApiKey = 'AQ.Ab8RN6Jp5X1kKcslTghSc6RVjmefNJ6HS0lpySDWqPQfOD5zzw';
 
   // Get saved API key from SharedPreferences
   Future<String?> getSavedApiKey() async {
@@ -194,8 +195,12 @@ class ChatService {
       rights = rightsJson.map((r) => jsonDecode(r) as Map<String, dynamic>).toList();
     } catch (_) {}
 
-    final apiKey = await getSavedApiKey();
+    String? apiKey = await getSavedApiKey();
     if (apiKey == null || apiKey.trim().isEmpty) {
+      apiKey = _defaultApiKey;
+    }
+
+    if (apiKey.isEmpty) {
       await Future.delayed(const Duration(milliseconds: 800));
       return _getLocalResponse(userText, schemes, rights);
     }

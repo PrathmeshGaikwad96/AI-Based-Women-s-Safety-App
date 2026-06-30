@@ -150,7 +150,7 @@ class _AiScreenState extends State<AiScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Configure a custom Google Gemini API Key for advanced AI reasoning. If left empty, SHRI AI operates in offline keyword-based fallback mode.',
+                    'Configure a custom Google Gemini API Key. If left empty, SHRI AI uses a pre-configured default API key.',
                     style: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 11,

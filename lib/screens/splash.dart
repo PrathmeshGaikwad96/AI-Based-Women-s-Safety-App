@@ -96,23 +96,13 @@ class _SplashInitializingScreenState extends State<SplashInitializingScreen>
 
                 Column(
                   children: [
-                    SizedBox(height: h * 0.19),
+                    SizedBox(height: h * 0.17),
 
                     // Logo
                     const _SplashLogo(),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 28),
 
-                    Text(
-                      'SHRI',
-                      style: TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
                     Text(
                       'YOUR SMART SAFETY COMPANION',
                       style: TextStyle(
@@ -200,35 +190,31 @@ class _SplashLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 92,
-      height: 92,
+      width: 140,
+      height: 140,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Center(
             child: Container(
-              width: 78,
-              height: 78,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
                 color: Colors.white,
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primaryBlue.withOpacity(0.14),
+                    color: AppColors.primaryBlue.withOpacity(0.12),
                     blurRadius: 26,
-                    offset: const Offset(0, 14),
+                    offset: const Offset(0, 12),
                   ),
                 ],
               ),
-              child: Center(
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.shield_rounded, color: Colors.white, size: 20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: Image.asset(
+                  'assets/logo.jpg',
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
@@ -236,11 +222,11 @@ class _SplashLogo extends StatelessWidget {
 
           // Purple sparkle bubble (top-right)
           Positioned(
-            right: 6,
-            top: 6,
+            right: 0,
+            top: 0,
             child: Container(
-              width: 22,
-              height: 22,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: const LinearGradient(
@@ -250,13 +236,13 @@ class _SplashLogo extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.purple.withOpacity(0.25),
-                    blurRadius: 14,
-                    offset: const Offset(0, 8),
+                    color: AppColors.purple.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
                   )
                 ],
               ),
-              child: const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
+              child: const Icon(Icons.auto_awesome, size: 13, color: Colors.white),
             ),
           ),
         ],

@@ -99,21 +99,25 @@ class _LoginScreenState extends State<LoginScreen> {
               // App Logo
               Center(
                 child: Container(
-                  width: 64,
-                  height: 64,
+                  width: 78,
+                  height: 78,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primaryBlue.withOpacity(0.1),
+                        color: AppColors.primaryBlue.withOpacity(0.08),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Icon(Icons.shield_rounded, color: AppColors.primaryBlue, size: 28),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.asset(
+                      'assets/logo.jpg',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
